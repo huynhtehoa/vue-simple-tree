@@ -1,4 +1,7 @@
 <template>
+  <div>
+    <input v-model="filter" />
+  </div>
   <table>
     <thead>
       <th
@@ -19,7 +22,7 @@
 
   <div :style="{ display: 'flex', gap: '2px' }">
     <button
-      v-for="(_, i) in Array(Math.ceil(data.length / pagination.pageSize))"
+      v-for="(_, i) in Array(Math.ceil(filteredData.length / pagination.pageSize))"
       :key="i"
       @click="$emit('pageChanged', i + 1)"
     >
@@ -51,6 +54,7 @@ interface Props {
   colDefs: ColDef[],
   data: Record<string, any>[]
   pagination: Pagination
+  filter?: string
 }
 
 const props = defineProps<Props>()
@@ -58,6 +62,17 @@ const emits = defineEmits<{
   pageChanged: [value: number],
   pageSizeChanged: [value: number],
 }>()
+
+// filter
+const filter = ref(props.filter || '')
+const filteredData = computed(() => {
+  const data = props.data.slice()
+  if (!filter.value) return data;
+
+  return data.filter(d => {
+    return Object.values(d).join(' ').toLocaleLowerCase().includes(filter.value.toLocaleLowerCase())
+  })
+})
 
 // sort
 const sortField = ref('')
@@ -69,7 +84,7 @@ function handleSort(col: ColDef) {
 }
 
 const sortedData = computed(() => {
-  const cloned = props.data.slice();
+  const cloned = filteredData.value.slice()
   const comparator = props.colDefs.find(col => col.field === sortField.value)?.comparator;
 
   if (typeof comparator !== 'function') {
@@ -88,10 +103,10 @@ const paginatedData = computed(() => {
   return data;
 })
 
-watch(() => props.pagination.pageSize, (v) => {
-  if (props.pagination.page > (Math.ceil(props.data.length / v))) {
-    emits('pageChanged', Math.ceil(props.data.length / v))
+watch(() => filteredData.value.length, (v) => {
+  if (props.pagination.page > (Math.ceil(filteredData.value.length / props.pagination.pageSize))) {
+    emits('pageChanged', Math.ceil(filteredData.value.length / props.pagination.pageSize))
   }
-})
+}, {immediate: true})
 
 </script>
